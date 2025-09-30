@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(hvigor assembleHap:*)",
+      "Bash(./hvigor/hvigor-wrapper.js assembleHap:*)",
+      "Bash(/Applications/DevEco-Studio.app/Contents/tools/node/bin/node /Applications/DevEco-Studio.app/Contents/tools/hvigor/bin/hvigorw.js --mode module -p module=entry@default -p product=default -p requiredDeviceType=phone assembleHap --analyze=normal --parallel --incremental --daemon)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
