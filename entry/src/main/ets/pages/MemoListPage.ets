@@ -31,6 +31,36 @@ export struct MemoListPage {
     this.viewModel.refresh();
   }
 
+  /**
+   * 格式化列表中的提醒时间显示
+   */
+  private formatReminderTimeForList(timestamp: number): string {
+    const now = new Date();
+    const reminderDate = new Date(timestamp);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const reminderDay = new Date(reminderDate.getFullYear(), reminderDate.getMonth(), reminderDate.getDate());
+
+    const timeStr =
+      `${reminderDate.getHours().toString().padStart(2, '0')}:${reminderDate.getMinutes().toString().padStart(2, '0')}`;
+
+    // 计算天数差
+    const dayDiff = Math.floor((reminderDay.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+
+    if (dayDiff === 0) {
+      return `今天 ${timeStr}`;
+    } else if (dayDiff === 1) {
+      return `明天 ${timeStr}`;
+    } else if (dayDiff === 2) {
+      return `后天 ${timeStr}`;
+    } else if (dayDiff > 2 && dayDiff < 7) {
+      const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+      const weekDay = weekDays[reminderDate.getDay()];
+      return `周${weekDay} ${timeStr}`;
+    } else {
+      return `${reminderDate.getMonth() + 1}月${reminderDate.getDate()}日 ${timeStr}`;
+    }
+  }
+
   build() {
     Column() {
       // 顶部工具栏
@@ -129,7 +159,6 @@ export struct MemoListPage {
       curve: Curve.EaseInOut
     })
   }
-
 
   /**
    * 构建备忘录列表
@@ -264,17 +293,37 @@ export struct MemoListPage {
               .width('100%')
           }
 
+          // 🔥 新增：提醒时间显示（如果有提醒时间）
+          if (memo.reminderTime && memo.reminderTime > 0) {
+            Row() {
+              Image($r('app.media.alarm')) // 提醒闹钟图标
+                .width(12)
+                .height(12)
+                .fillColor(this.themeManager.getPrimaryColor())
+                .margin({ right: 4 })
+
+              Text(this.formatReminderTimeForList(memo.reminderTime))
+                .fontSize(11)
+                .fontColor(this.themeManager.getPrimaryColor())
+                .fontWeight(FontWeight.Medium)
+            }
+            .width('100%')
+            .margin({ top: 4 })
+            .alignItems(VerticalAlign.Center)
+          }
+
+
           // 底部信息行 - 显示标签、优先级、功能图标和时间
           Row() {
 
 
-            // 功能图标指示器 - 显示备忘录的特殊属性
-            if (memo.reminderTime) {
-              Image($r('app.media.alarm')) // 提醒闹钟图标
-                .width(10)
-                .height(10)
-                .margin({ right: 4 })
-            }
+            // // 功能图标指示器 - 显示备忘录的特殊属性
+            // if (memo.reminderTime) {
+            //   Image($r('app.media.alarm')) // 提醒闹钟图标
+            //     .width(10)
+            //     .height(10)
+            //     .margin({ right: 4 })
+            // }
 
             Blank() // 弹性空白区域，将时间推到右侧
 

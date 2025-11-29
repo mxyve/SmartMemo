@@ -1,5 +1,5 @@
 /**
- * 备忘录详情页面
+ * 备忘录详情页面 - 使用封装的时间选择器组件
  */
 
 import { router } from '@kit.ArkUI';
@@ -7,6 +7,7 @@ import { MemoItem } from '../model/MemoItem';
 import { StorageService } from '../service/StorageService';
 import { ThemeManager } from '../utils/ThemeManager';
 import { AppConstants } from '../constants/AppConstants';
+import { TimePickerComponent, TimePickerController } from '../components/TimePicker';
 
 @Entry
 @Component
@@ -17,10 +18,10 @@ export struct MemoDetailPage {
   @State private storageService: StorageService = StorageService.getInstance();
   @State private title: string = '';
   @State private content: string = '';
-  @State private showReminderDialog: boolean = false;
   @State private isSaving: boolean = false;
-
   private routerParams: Record<string, Object> = {};
+  // 🔥 关键：控制器必须是 @State
+  @State timePickerController: TimePickerController = new TimePickerController();
 
   aboutToAppear(): void {
     this.routerParams = router.getParams() as Record<string, Object>;
@@ -50,6 +51,11 @@ export struct MemoDetailPage {
 
       // 底部操作栏
       this.buildBottomActions()
+
+      // 🔥 时间选择器组件 - 使用双向绑定
+      TimePickerComponent({
+        controller: $timePickerController
+      })
     }
     .width('100%')
     .height('100%')
@@ -171,7 +177,6 @@ export struct MemoDetailPage {
     .margin({ bottom: AppConstants.SPACING.LARGE })
   }
 
-
   /**
    * 构建提醒设置
    */
@@ -189,11 +194,13 @@ export struct MemoDetailPage {
           Image($r('app.media.alarm'))
             .width(16)
             .height(16)
-            .fillColor(this.memo.reminderTime ? this.themeManager.getPrimaryColor() : this.themeManager.getSecondaryTextColor())
+            .fillColor(this.memo.reminderTime ? this.themeManager.getPrimaryColor() :
+              this.themeManager.getSecondaryTextColor())
 
           Text(this.memo.reminderTime ? this.formatReminderTime(this.memo.reminderTime) : '设置提醒')
             .fontSize(this.themeManager.getScaledFontSize(AppConstants.FONT_SIZE.MEDIUM))
-            .fontColor(this.memo.reminderTime ? this.themeManager.getPrimaryColor() : this.themeManager.getSecondaryTextColor())
+            .fontColor(this.memo.reminderTime ? this.themeManager.getPrimaryColor() :
+              this.themeManager.getSecondaryTextColor())
             .margin({ left: AppConstants.SPACING.SMALL })
 
           Image($r('app.media.arrow_right'))
@@ -212,13 +219,18 @@ export struct MemoDetailPage {
         bottom: AppConstants.SPACING.SMALL
       })
       .onClick(() => {
-        this.showReminderDialog = true;
+        console.log('点击设置提醒按钮');
+        // 🔥 设置回调并打开对话框
+        this.timePickerController.setCallbacks(
+          this.onTimePickerCancel.bind(this),
+          this.onTimePickerConfirm.bind(this)
+        );
+        this.timePickerController.openDialog();
       })
     }
     .width('100%')
     .margin({ bottom: AppConstants.SPACING.LARGE })
   }
-
 
   /**
    * 构建底部操作栏
@@ -262,6 +274,21 @@ export struct MemoDetailPage {
   }
 
   /**
+   * 时间选择器取消回调
+   */
+  private onTimePickerCancel(): void {
+    console.log('时间选择取消');
+  }
+
+  /**
+   * 时间选择器确认回调
+   */
+  private onTimePickerConfirm(timestamp: number): void {
+    this.memo.reminderTime = timestamp;
+    console.log('设置提醒时间:', new Date(timestamp).toLocaleString());
+  }
+
+  /**
    * 初始化页面
    */
   private async initializePage(): Promise<void> {
@@ -302,7 +329,8 @@ export struct MemoDetailPage {
         message: '请输入备忘录标题',
         primaryButton: {
           value: '确定',
-          action: () => {}
+          action: () => {
+          }
         }
       });
       return;
@@ -326,7 +354,8 @@ export struct MemoDetailPage {
         message: '保存失败，请重试',
         primaryButton: {
           value: '确定',
-          action: () => {}
+          action: () => {
+          }
         }
       });
     } finally {
@@ -344,11 +373,12 @@ export struct MemoDetailPage {
         message: '有未保存的更改，确定要退出吗？',
         primaryButton: {
           value: '取消',
-          action: () => {}
+          action: () => {
+          }
         },
         secondaryButton: {
           value: '退出',
-          fontColor: this.themeManager.getErrorColor(), // 放弃修改按钮用红色警告
+          fontColor: this.themeManager.getErrorColor(),
           action: () => {
             router.back();
           }
@@ -364,9 +394,8 @@ export struct MemoDetailPage {
    */
   private hasUnsavedChanges(): boolean {
     return this.title !== this.memo.title ||
-           this.content !== this.memo.content;
+      this.content !== this.memo.content;
   }
-
 
   /**
    * 格式化提醒时间

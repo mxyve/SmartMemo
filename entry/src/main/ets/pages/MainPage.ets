@@ -3,6 +3,7 @@
  */
 
 import { router } from '@kit.ArkUI';
+import { window } from '@kit.ArkUI'; // 🔥 新增导入
 import { MemoListPage } from './MemoListPage';
 import { SettingsPage } from './SettingsPage';
 import { AppConstants } from '../constants/AppConstants';
@@ -19,6 +20,9 @@ struct MainPage {
   @State currentTabIndex: number = 0;
   @State showFloatingButton: boolean = true;
   @State refreshTrigger: number = 0;
+  // 🔥 新增：安全区域状态
+  @State statusBarHeight: number = 0;
+  @State navigationBarHeight: number = 0;
   // TabBar配置
   private tabBarData: TabBarItem[] = [
     {
@@ -39,7 +43,30 @@ struct MainPage {
   ];
 
   aboutToAppear(): void {
-    // 页面初始化
+    // 🔥 新增：获取系统栏高度
+    this.getSystemBarHeights();
+  }
+
+  /**
+   * 🔥 新增：获取系统栏高度
+   */
+  private async getSystemBarHeights(): Promise<void> {
+    try {
+      const win = await window.getLastWindow(getContext(this));
+      const avoidArea = win.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
+
+      // 状态栏高度（顶部）
+      this.statusBarHeight = avoidArea.topRect.height;
+      // 导航栏高度（底部）
+      this.navigationBarHeight = avoidArea.bottomRect.height;
+
+      console.info(`状态栏高度: ${this.statusBarHeight}, 导航栏高度: ${this.navigationBarHeight}`);
+    } catch (error) {
+      console.error('获取系统栏高度失败:', error);
+      // 设置默认值
+      this.statusBarHeight = 60;
+      this.navigationBarHeight = 60;
+    }
   }
 
   onPageShow(): void {
@@ -49,38 +76,56 @@ struct MainPage {
 
   build() {
     Stack() {
-      // 主要内容区域
-      Tabs({
-        barPosition: BarPosition.End,
-        index: this.currentTabIndex
-      }) {
-        // 备忘录页面
-        TabContent() {
-          MemoListPage({ refreshTrigger: this.refreshTrigger })
-        }
-        .tabBar(this.buildTabBarItem(0))
+      // 🔥 修正：安全区域占位和主要内容
+      Column() {
+        // 状态栏占位（防止内容与状态栏重叠）
+        Row()
+          .width('100%')
+          .height(this.statusBarHeight)
+          .backgroundColor('transparent')
 
-        // 分类页面
-        TabContent() {
-          this.buildCategoryPage()
-        }
-        .tabBar(this.buildTabBarItem(1))
+        // 主要内容区域
+        Tabs({
+          barPosition: BarPosition.End,
+          index: this.currentTabIndex
+        }) {
+          // 备忘录页面
+          TabContent() {
+            MemoListPage({ refreshTrigger: this.refreshTrigger })
+          }
+          .tabBar(this.buildTabBarItem(0))
 
-        // 设置页面
-        TabContent() {
-          SettingsPage()
+          // 分类页面
+          TabContent() {
+            this.buildCategoryPage()
+          }
+          .tabBar(this.buildTabBarItem(1))
+
+          // 设置页面
+          TabContent() {
+            SettingsPage()
+          }
+          .tabBar(this.buildTabBarItem(2))
         }
-        .tabBar(this.buildTabBarItem(2))
+        .onChange((index: number) => {
+          this.currentTabIndex = index;
+          // 在分类和设置页面隐藏悬浮按钮
+          this.showFloatingButton = index === 0;
+        })
+        .animationDuration(AppConstants.ANIMATION.DURATION_NORMAL)
+        .backgroundColor('transparent')
+        .layoutWeight(1) // 🔥 新增：确保Tabs填满空间
+
+        // 🔥 修正：导航栏占位移到Tabs外部
+        Row()
+          .width('100%')
+          .height(this.navigationBarHeight)
+          .backgroundColor('transparent')
       }
-      .onChange((index: number) => {
-        this.currentTabIndex = index;
-        // 在分类和设置页面隐藏悬浮按钮
-        this.showFloatingButton = index === 0;
-      })
-      .animationDuration(AppConstants.ANIMATION.DURATION_NORMAL)
-      .backgroundColor('transparent')
+      .width('100%')
+      .height('100%')
 
-      // 悬浮添加按钮
+      // 🔥 修正：悬浮按钮放在Stack的最外层
       if (this.showFloatingButton) {
         Button() {
           Text('+')
@@ -106,7 +151,7 @@ struct MainPage {
         })
         .markAnchor({
           x: 72, // 按钮宽度56 + 右边距16
-          y: 128 // 按钮高度56 + 底部边距16 + TabBar高度56
+          y: 128 // 按钮高度56 + 底部边距16 + TabBar高度56 + 导航栏高度
         })
         .animation({
           duration: AppConstants.ANIMATION.DURATION_NORMAL,
